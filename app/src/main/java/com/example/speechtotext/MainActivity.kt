@@ -2,6 +2,8 @@ package com.example.speechtotext
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlertDialog
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -14,10 +16,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -36,9 +41,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -68,7 +76,14 @@ class MainActivity : ComponentActivity() {
                 recordAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
             }
             val state by voiceToTextParser.state.collectAsState()
+            var openDialog by rememberSaveable { mutableStateOf(false) }
 
+            LaunchedEffect(key1 = state.isSpeaking) {
+                if (state.isSpeaking) {
+                    openDialog = true
+                }
+
+            }
             Scaffold(
                 floatingActionButton = {
                     FloatingActionButton(onClick = {
@@ -96,15 +111,38 @@ class MainActivity : ComponentActivity() {
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    AnimatedContent(
-                        targetState = state.isSpeaking,
-                    ) { isSpeaking ->
-                        if (isSpeaking) {
-                            Text(text = "Dinliyorum")
-                        } else {
-                            Text(state.spokenText.ifEmpty { "Konuşmak için mikrofon simgesine tıklayın" })
+
+                    if (openDialog) {
+                        Box(
+                            modifier = Modifier
+                                .size(200.dp)
+                                .clip(shape = RoundedCornerShape(20.dp))
+                                .background(Color.Yellow)
+                                .padding(20.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                AnimatedContent(
+                                    targetState = state.isSpeaking,
+                                ) { isSpeaking ->
+                                    if (isSpeaking) {
+                                        Text(text = "Dinliyorum")
+                                    } else {
+                                        Text(
+                                            state.spokenText.ifEmpty { "Konuşmak için mikrofon simgesine tıklayın" },
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.weight(1f))
+                                Button(onClick = { openDialog = false; voiceToTextParser.stopListening() }) {
+                                    Text("Kapat")
+                                }
+                            }
+
                         }
                     }
+
                 }
 
             }
