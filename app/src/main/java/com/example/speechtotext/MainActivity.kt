@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -78,6 +80,9 @@ class MainActivity : ComponentActivity() {
             val state by voiceToTextParser.state.collectAsState()
             var openDialog by rememberSaveable { mutableStateOf(false) }
 
+            var listOfNumbers by remember {
+                mutableStateOf(listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+            }
             LaunchedEffect(key1 = state.isSpeaking) {
                 if (state.isSpeaking) {
                     openDialog = true
@@ -103,15 +108,53 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             ) { innerPadding ->
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
                         .padding(20.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    contentAlignment = Alignment.Center
                 ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(50.dp), horizontalAlignment = Alignment.End
+                    ) {
+                        listOfNumbers.forEachIndexed { index, number ->
+                            if (index == listOfNumbers.lastIndex) {
+                                Row {
+                                    Text(
+                                        text = "+",
+                                        fontSize = 20.sp,
+                                        modifier = Modifier.wrapContentSize()
+                                    )
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Text(
+                                        text = number.toString(),
+                                        fontSize = 20.sp,
+                                        modifier = Modifier
+                                            .wrapContentSize()
+                                            .padding(top = 10.dp)
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    text = number.toString(),
+                                    fontSize = 20.sp,
+                                    modifier = Modifier
+                                        .wrapContentSize()
+                                        .padding(top = 10.dp)
+                                )
+                            }
+                        }
+                        HorizontalDivider()
+                        Row(modifier = Modifier.padding(top = 10.dp)) {
+                            Text(text = "Toplam", fontSize = 30.sp)
+                            Spacer(modifier = Modifier.weight(1f))
+                            Text(text = "${listOfNumbers.sum()}", fontSize = 30.sp)
+                        }
 
+                    }
                     if (openDialog) {
                         Box(
                             modifier = Modifier
@@ -135,8 +178,16 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                                 Spacer(modifier = Modifier.weight(1f))
-                                Button(onClick = { openDialog = false; voiceToTextParser.stopListening() }) {
-                                    Text("Kapat")
+                                Button(onClick = {
+                                    openDialog = false;
+                                    voiceToTextParser.stopListening()
+                                    listOfNumbers = listOfNumbers + state.spokenText.toInt()
+                                }) {
+                                    if (state.isSpeaking || state.spokenText.isEmpty()) {
+                                        Text("Kapat")
+                                    } else {
+                                        Text("Ekle")
+                                    }
                                 }
                             }
 
