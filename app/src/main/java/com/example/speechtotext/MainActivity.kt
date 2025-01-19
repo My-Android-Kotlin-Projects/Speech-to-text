@@ -1,9 +1,6 @@
 package com.example.speechtotext
 
 import android.Manifest
-import android.annotation.SuppressLint
-import android.app.AlertDialog
-import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -12,10 +9,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,19 +26,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -53,7 +47,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.ViewModelProvider
+import com.example.speechtotext.db.NumbersModel
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -64,6 +60,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val viewModel = ViewModelProvider(this).get(NumbersViewModel::class.java)
         setContent {
             var canRecord by remember {
                 mutableStateOf(false)
@@ -83,11 +80,17 @@ class MainActivity : ComponentActivity() {
             var listOfNumbers by remember {
                 mutableStateOf(listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
             }
+            val scrollState = rememberScrollState()
+            val coroutineScope = rememberCoroutineScope()
             LaunchedEffect(key1 = state.isSpeaking) {
                 if (state.isSpeaking) {
                     openDialog = true
                 }
-
+            }
+            LaunchedEffect(key1 = listOfNumbers) {
+                coroutineScope.launch {
+                    scrollState.animateScrollTo(scrollState.maxValue)
+                }
             }
             Scaffold(
                 floatingActionButton = {
@@ -118,17 +121,35 @@ class MainActivity : ComponentActivity() {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(50.dp), horizontalAlignment = Alignment.End
+                            .padding(50.dp),
+                        horizontalAlignment = Alignment.End
                     ) {
-                        listOfNumbers.forEachIndexed { index, number ->
-                            if (index == listOfNumbers.lastIndex) {
-                                Row {
-                                    Text(
-                                        text = "+",
-                                        fontSize = 20.sp,
-                                        modifier = Modifier.wrapContentSize()
-                                    )
-                                    Spacer(modifier = Modifier.weight(1f))
+                        Column(
+                            modifier = Modifier
+                                .height(300.dp)
+                                .verticalScroll(scrollState)
+                                .background(color = Color.LightGray)
+                                .padding(5.dp),
+                            horizontalAlignment = Alignment.End
+                        ) {
+                            listOfNumbers?.forEachIndexed { index, number ->
+                                if (index == listOfNumbers!!.lastIndex) {
+                                    Row {
+                                        Text(
+                                            text = "+",
+                                            fontSize = 20.sp,
+                                            modifier = Modifier.wrapContentSize()
+                                        )
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        Text(
+                                            text = number.toString(),
+                                            fontSize = 20.sp,
+                                            modifier = Modifier
+                                                .wrapContentSize()
+                                                .padding(top = 10.dp)
+                                        )
+                                    }
+                                } else {
                                     Text(
                                         text = number.toString(),
                                         fontSize = 20.sp,
@@ -137,16 +158,9 @@ class MainActivity : ComponentActivity() {
                                             .padding(top = 10.dp)
                                     )
                                 }
-                            } else {
-                                Text(
-                                    text = number.toString(),
-                                    fontSize = 20.sp,
-                                    modifier = Modifier
-                                        .wrapContentSize()
-                                        .padding(top = 10.dp)
-                                )
                             }
                         }
+
                         HorizontalDivider()
                         Row(modifier = Modifier.padding(top = 10.dp)) {
                             Text(text = "Toplam", fontSize = 30.sp)
