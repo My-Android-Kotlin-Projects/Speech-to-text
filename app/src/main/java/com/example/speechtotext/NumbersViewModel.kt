@@ -1,6 +1,8 @@
 package com.example.speechtotext
 
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.speechtotext.db.NumbersModel
@@ -28,6 +30,10 @@ class NumbersViewModel: ViewModel() {
         }
     }
     fun getSum(): LiveData<Int> {
-        return numbersDao.getSum()
+        val result = MediatorLiveData<Int>()
+        result.addSource(numbersDao.getSum()){value ->
+            result.value = value ?: 0
+        }
+        return result
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
@@ -23,8 +24,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -48,7 +51,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
-import com.example.speechtotext.db.NumbersModel
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -60,7 +62,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val viewModel = ViewModelProvider(this).get(NumbersViewModel::class.java)
+        val viewModel = ViewModelProvider(this)[NumbersViewModel::class.java]
         setContent {
             var canRecord by remember {
                 mutableStateOf(false)
@@ -75,16 +77,15 @@ class MainActivity : ComponentActivity() {
                 recordAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
             }
             val state by voiceToTextParser.state.collectAsState()
-            var openDialog by rememberSaveable { mutableStateOf(false) }
+            var openDialogToSpeakAndAdd by rememberSaveable { mutableStateOf(false) }
+            var openDialogToDeleteAll by rememberSaveable { mutableStateOf(false) }
 
-            var listOfNumbers by remember {
-                mutableStateOf(listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
-            }
+            val listOfNumbers by viewModel.numbers.observeAsState()
             val scrollState = rememberScrollState()
             val coroutineScope = rememberCoroutineScope()
             LaunchedEffect(key1 = state.isSpeaking) {
                 if (state.isSpeaking) {
-                    openDialog = true
+                    openDialogToSpeakAndAdd = true
                 }
             }
             LaunchedEffect(key1 = listOfNumbers) {
@@ -92,21 +93,61 @@ class MainActivity : ComponentActivity() {
                     scrollState.animateScrollTo(scrollState.maxValue)
                 }
             }
+            val sum by viewModel.getSum().observeAsState(0)
             Scaffold(
                 floatingActionButton = {
-                    FloatingActionButton(onClick = {
-                        if (state.isSpeaking) {
-                            voiceToTextParser.stopListening()
-                        } else {
-                            voiceToTextParser.startListening()
-                        }
-                    }) {
-                        AnimatedContent(targetState = state.isSpeaking, label = "") { isSpeaking ->
-                            if (isSpeaking) {
-                                Icon(imageVector = Icons.Rounded.Stop, contentDescription = null)
-                            } else {
-                                Icon(imageVector = Icons.Rounded.Mic, contentDescription = null)
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        FloatingActionButton(
+                            onClick = {
+                                if (state.isSpeaking) {
+                                    voiceToTextParser.stopListening()
+                                } else {
+                                    voiceToTextParser.startListening()
+                                }
+                            }, modifier = Modifier.align(Alignment.BottomEnd)
+                        ) {
+                            AnimatedContent(
+                                targetState = state.isSpeaking,
+                                label = ""
+                            ) { isSpeaking ->
+                                if (isSpeaking) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Stop,
+                                        contentDescription = null
+                                    )
+                                } else {
+                                    Icon(imageVector = Icons.Rounded.Mic, contentDescription = null)
+                                }
                             }
+                        }
+                        FloatingActionButton(
+                            onClick = { openDialogToDeleteAll = true },
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(start = 30.dp)
+                        ) {
+                            Icon(imageVector = Icons.Rounded.Delete, contentDescription = null)
+
+                        }
+                        if (openDialogToDeleteAll) {
+                            AlertDialog(
+                                onDismissRequest = { openDialogToDeleteAll = false },
+                                title = { Text(text = "Sil Onayla") },
+                                text = { Text("Hepsini silicen mi?") },
+                                confirmButton = {
+                                    Button(onClick = {
+                                        viewModel.deleteAllNumbers()
+                                        openDialogToDeleteAll = false
+                                    }) {
+                                        Text("Sil")
+                                    }
+                                },
+                                dismissButton = {
+                                    Button(onClick = { openDialogToDeleteAll = false }) {
+                                        Text("Kapat")
+                                    }
+                                }
+                            )
                         }
                     }
                 }
@@ -126,7 +167,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Column(
                             modifier = Modifier
-                                .height(300.dp)
+                                .heightIn(max = 300.dp)
                                 .verticalScroll(scrollState)
                                 .background(color = Color.LightGray)
                                 .padding(5.dp),
@@ -142,7 +183,7 @@ class MainActivity : ComponentActivity() {
                                         )
                                         Spacer(modifier = Modifier.weight(1f))
                                         Text(
-                                            text = number.toString(),
+                                            text = number.number.toString(),
                                             fontSize = 20.sp,
                                             modifier = Modifier
                                                 .wrapContentSize()
@@ -151,7 +192,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 } else {
                                     Text(
-                                        text = number.toString(),
+                                        text = number.number.toString(),
                                         fontSize = 20.sp,
                                         modifier = Modifier
                                             .wrapContentSize()
@@ -165,11 +206,17 @@ class MainActivity : ComponentActivity() {
                         Row(modifier = Modifier.padding(top = 10.dp)) {
                             Text(text = "Toplam", fontSize = 30.sp)
                             Spacer(modifier = Modifier.weight(1f))
-                            Text(text = "${listOfNumbers.sum()}", fontSize = 30.sp)
+                            Text(text = "$sum", fontSize = 30.sp)
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(modifier = Modifier.padding(top = 10.dp)) {
+                            Text(text = "Kalan", fontSize = 30.sp)
+                            Spacer(modifier = Modifier.weight(1f))
+                            Text(text = "${4444 - sum}", fontSize = 30.sp)
                         }
 
                     }
-                    if (openDialog) {
+                    if (openDialogToSpeakAndAdd) {
                         Box(
                             modifier = Modifier
                                 .size(200.dp)
@@ -193,9 +240,17 @@ class MainActivity : ComponentActivity() {
                                 }
                                 Spacer(modifier = Modifier.weight(1f))
                                 Button(onClick = {
-                                    openDialog = false;
+                                    openDialogToSpeakAndAdd = false;
                                     voiceToTextParser.stopListening()
-                                    listOfNumbers = listOfNumbers + state.spokenText.toInt()
+                                    val spokenText = state.spokenText
+                                    if (spokenText.isNotEmpty()) {
+                                        val number = spokenText.toIntOrNull()
+                                        if (number != null) {
+                                            viewModel.insertNumber(number)
+                                        }
+                                    } else {
+                                        println("Spoken text is empty")
+                                    }
                                 }) {
                                     if (state.isSpeaking || state.spokenText.isEmpty()) {
                                         Text("Kapat")
@@ -209,10 +264,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                 }
-
             }
         }
     }
-
 }
+
 
