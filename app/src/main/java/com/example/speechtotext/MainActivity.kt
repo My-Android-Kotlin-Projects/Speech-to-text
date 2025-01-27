@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
@@ -32,8 +33,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,6 +87,7 @@ class MainActivity : ComponentActivity() {
             val listOfNumbers by viewModel.numbers.observeAsState()
             val scrollState = rememberScrollState()
             val coroutineScope = rememberCoroutineScope()
+            var number by rememberSaveable { mutableStateOf("0") }
             LaunchedEffect(key1 = state.isSpeaking) {
                 if (state.isSpeaking) {
                     openDialogToSpeakAndAdd = true
@@ -230,7 +235,15 @@ class MainActivity : ComponentActivity() {
                                     targetState = state.isSpeaking,
                                 ) { isSpeaking ->
                                     if (isSpeaking) {
-                                        Text(text = "Dinliyorum")
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(text = "Dinliyorum")
+                                            OutlinedTextField(
+                                                value = number,
+                                                onValueChange = { number = it },
+                                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                            )
+                                        }
+
                                     } else {
                                         Text(
                                             state.spokenText.ifEmpty { "Konuşmak için mikrofon simgesine tıklayın" },
@@ -244,9 +257,9 @@ class MainActivity : ComponentActivity() {
                                     voiceToTextParser.stopListening()
                                     val spokenText = state.spokenText
                                     if (spokenText.isNotEmpty()) {
-                                        val number = spokenText.toIntOrNull()
-                                        if (number != null) {
-                                            viewModel.insertNumber(number)
+                                        val value = spokenText.toInt()
+                                        if (value <= 0) {
+                                            viewModel.insertNumber(number.toInt())
                                         }
                                     } else {
                                         println("Spoken text is empty")
@@ -262,7 +275,6 @@ class MainActivity : ComponentActivity() {
 
                         }
                     }
-
                 }
             }
         }
